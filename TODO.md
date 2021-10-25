@@ -10,10 +10,11 @@ master password (PBKDF2 + pepper(custom) + username) to get access
 
 ```text
 ./pws  # -> enter mpasswd -> PWS terminal
-lst  # list services
+ls  # list services
 
 add "service"  # -> enter login -> enter passwd
 get "service"  # -> enter master password -> Y/n -> Show in console or copy to clipboard
+rm "service"
 
 set master  # -> get_passwd() -> repeat mpasswd  # change master password
 set qtime "360"  # quit from terminal time in seconds
@@ -23,7 +24,7 @@ set slevel "1-3"  # power level
 quit|q|exit  # exit from PWS
 
 rnd "level"  # get random passwd
-pws -r "level"  # get random passwd without console
+./pws -r "level"  # get random passwd without console
 ```
 
 ```text
