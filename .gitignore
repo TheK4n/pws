@@ -1,6 +1,6 @@
 ### Python template
 
-venv\
+venv
 .pws*
 # Byte-compiled / optimized / DLL files
 __pycache__/
