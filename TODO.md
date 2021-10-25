@@ -9,7 +9,7 @@ master password (PBKDF2 + pepper(custom) + username) to get access
 
 
 ```text
-pws  # -> enter mpasswd -> PWS terminal
+./pws  # -> enter mpasswd -> PWS terminal
 lst  # list services
 
 add "service"  # -> enter login -> enter passwd
