@@ -181,7 +181,6 @@ def get_expired_passwords():
             c += 1
 
 
-
 def main_console():
     get_expired_passwords()
     while True:
