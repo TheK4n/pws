@@ -105,6 +105,7 @@ class Console:
                 new_master = getpass("Enter new master password: ")
                 new_master_repeated = getpass("Repeat new master password: ")
                 if new_master == new_master_repeated:
+                    self.master.change_master_in_services(self.master.password, new_master)
                     self.master.write(new_master)
                     print("[+] Setting master changed")
 
@@ -191,14 +192,10 @@ class Master:
 
     def write(self, password=None):
         with open(shadow, 'wb') as file:
-            if password:
-                self.change_master_in_services(self.password, password)
-                self.password = password
-                self.encoded_password = self.__encode_master_password(password)
-                file.write(self.encoded_password)
-            else:
-                file.write(self.encoded_password)
-                self.change_master_in_services(self.password, password)
+            self.password = password
+            self.encoded_password = self.__encode_master_password(password)
+            file.write(self.encoded_password)
+
 
     @staticmethod
     def __get_master_hash():
@@ -291,7 +288,10 @@ class Service:
         cipher = AES.new(private_key, AES.MODE_GCM, nonce=nonce)
 
         # decrypt the cipher text
-        return cipher.decrypt_and_verify(cipher_text, tag).decode('utf-8')
+        try:
+            return cipher.decrypt_and_verify(cipher_text, tag).decode('utf-8')
+        except ValueError:
+            pass
 
 
 class MyError(Exception):
