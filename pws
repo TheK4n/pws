@@ -2,6 +2,7 @@
 import datetime
 import os
 import sys
+# import pyperclip
 from getpass import getpass
 from base64 import b64encode, b64decode
 import hashlib
@@ -11,7 +12,7 @@ from Cryptodome.Cipher import AES
 from Cryptodome.Random import get_random_bytes
 from json import dump, load
 
-__version__ = '0.2 beta'
+__version__ = '0.4 beta'
 
 title = fr"""
 
@@ -40,11 +41,12 @@ exit
 q
 """
 
+FORBIDDEN_SYMBOLS = r'\|/:,*?"<>+.%!@'
 
-history = '.pws_history'
-services = '.pws_services'
-settings = '.pws_settings'
-shadow = '.pws_shadow'
+HISTORY = '.pws_history'
+SERVICES = '.pws_services'
+SETTINGS = '.pws_settings'
+SHADOW = '.pws_shadow'
 
 
 class Console:
@@ -52,28 +54,28 @@ class Console:
     prompt = '\npws > '
 
     def __init__(self, master_passwd):
-        self.hst_file = open(history, 'a')
+        self.hst_file = open(HISTORY, 'a')
         self.master = Master(master_passwd)
 
-        if not os.path.exists(shadow):
+        if not os.path.exists(SHADOW):
             self.master.write("root")
 
-        if not os.path.exists(settings):
-            with open(settings, 'w') as file:
+        if not os.path.exists(SETTINGS):
+            with open(SETTINGS, 'w') as file:
                 dump({"chtime": 60}, file, indent=4, ensure_ascii=False)
 
-        if not os.path.exists(history):
-            with open(history, 'w'):
+        if not os.path.exists(HISTORY):
+            with open(HISTORY, 'w'):
                 pass
 
-        if not os.path.exists(services):
-            os.mkdir(services)
+        if not os.path.exists(SERVICES):
+            os.mkdir(SERVICES)
 
     def __add(self, service_name: str):
 
-        login = input("login: ")
-        passwd = getpass("Enter password: ")
-        passwd_rep = getpass("Repeat password: ")
+        login = input("[?] login: ")
+        passwd = getpass("[?] Enter password: ")
+        passwd_rep = getpass("[?] Repeat password: ")
         if passwd_rep == passwd:
             service = Service(self.master.password, service_name)
             service.save(login, passwd)
@@ -87,71 +89,95 @@ class Console:
         try:
             l, p = service.get()
         except FileNotFoundError:
-            print("[X] Service not found")
+            print(f"[X] Service \"{service_name}\" not found")
         else:
-            print(f"\n[*] Service \"{service_name}\":\n\tLogin: {l}\n\tPassword: {p}")
+            answer = input("[?] Show password? Y/n ")
+            if answer in ['Y', 'y']:
+                print(f"\n[*] Service \"{service_name}\":\n\tLogin: {l}\n\tPassword: {p}")
+            else:
+                # print(f"\n[*] Service \"{service_name}\":\n\tLogin: {l}\n\tPassword: *copied to clipboard*")
+                # pyperclip.copy(p)
+                pass
 
     def __rm(self, service_name):
         service = Service(self.master.password, service_name)
         try:
             service.remove()
+            print(f"[-] Service \"{service_name}\" removed")
         except FileNotFoundError:
-            print("[X] Service not found")
+            print(f"[X] Service \"{service_name}\" not found")
 
     def __set(self, setting: str):
         match setting:
-            case "master":
-
-                new_master = getpass("Enter new master password: ")
-                new_master_repeated = getpass("Repeat new master password: ")
-                if new_master == new_master_repeated:
-                    self.master.change_master_in_services(self.master.password, new_master)
-                    self.master.write(new_master)
-                    print("[+] Setting master changed")
+            case "master", sub:
+                new_master = getpass("[?] Enter new master password: ")
+                if new_master == getpass("[?] Repeat new master password: "):
+                    match sub:
+                        case "*":
+                            self.master.change_master_in_services(self.master.password, new_master)
+                            self.master.write(new_master)
+                            print("[+] Setting master changed")
+                        case service_name:
+                            service = Service(self.master.password, service_name)
+                            try:
+                                service.change_master(new_master)
+                                print("[+] Service master changed")
+                            except FileNotFoundError:
+                                print(f"[X] Service \"{service_name}\" not found")
+            case _:
+                print(f"\n[X] Unknown setting")
 
     def loop(self):
         while True:
             command = input(self.prompt)
             self.hst_file.write(command + '\n')
-
             match command.split():
                 case "add", service_name:
+                    wrong_name = False
+                    for sym in service_name:
+                        if sym in FORBIDDEN_SYMBOLS:
+                            print(f"[X] Wrong char in service name: \"{sym}\"")
+                            wrong_name = True
+                            break
+
+                    if wrong_name:
+                        continue
                     self.__add(service_name)
 
                 case "get", service_name:
                     self.__get(service_name)
 
-                case "set", setting:
+                case "set", *setting:
                     self.__set(setting)
 
                 case "rm", service_name:
                     self.__rm(service_name)
 
                 case ["ls"]:
-                    for i in os.listdir(services):
+                    for i in os.listdir(SERVICES):
                         print(i)
 
                 case ['c'] | ['clear']:
                     os.system(["cls", "clear"][os.name == 'posix'])
 
                 case ["q"] | ["exit"] | ["quit"]:
-                    print('\n[-] PWS stopped')
+                    print('\n[X] PWS stopped')
                     exit(1)
 
                 case ["help"]:
                     print(help_title)
 
                 case _:
-                    print(f"\n[-] Unknown command")
+                    print(f"\n[X] Unknown command")
 
     @staticmethod
     def get_expired_passwords():
         res = []
 
-        chtime = int(load(open(settings, 'r'))["chtime"])
+        chtime = int(load(open(SETTINGS, 'r'))["chtime"])
 
-        for s in os.listdir(services):
-            if datetime.datetime.now() - datetime.datetime.strptime(load(open(os.path.join(services, s), 'r'))["time"],
+        for s in os.listdir(SERVICES):
+            if datetime.datetime.now() - datetime.datetime.strptime(load(open(os.path.join(SERVICES, s), 'r'))["time"],
                                                                     '%Y-%m-%d') \
                     > datetime.timedelta(chtime):
                 res.append(s)
@@ -183,7 +209,7 @@ class Master:
 
     @staticmethod
     def change_master_in_services(old_master, new_master):
-        for s in os.listdir(services):
+        for s in os.listdir(SERVICES):
             service = Service(old_master, s)
             l, p = service.get()
             service.remove()
@@ -191,15 +217,14 @@ class Master:
             service.save(l, p)
 
     def write(self, password=None):
-        with open(shadow, 'wb') as file:
+        with open(SHADOW, 'wb') as file:
             self.password = password
             self.encoded_password = self.__encode_master_password(password)
             file.write(self.encoded_password)
 
-
     @staticmethod
     def __get_master_hash():
-        with open(shadow, 'rb') as file:
+        with open(SHADOW, 'rb') as file:
             return file.read()
 
     @property
@@ -215,12 +240,8 @@ class Master:
 
 
 class Service:
-    forbidden_symbols = r'\|/:,*?"<>+.%!@'.split()
 
-    def __init__(self, master, service_name,):
-        for sym in service_name:
-            if sym in self.forbidden_symbols:
-                raise MyError("wrong symbol")
+    def __init__(self, master, service_name):
 
         self.master = master
         self.service_name = service_name
@@ -237,15 +258,21 @@ class Service:
         encrypted_passwd = {"hash": self.cipher}
         encrypted_passwd.update({"login": self.login, "time": str(datetime.datetime.now().date())})
 
-        with open(os.path.join(services, self.service_name), 'w') as file:
+        with open(os.path.join(SERVICES, self.service_name), 'w') as file:
             dump(encrypted_passwd, file, indent=4, ensure_ascii=False)
 
     def get(self):
-        with open(os.path.join(services, self.service_name), 'r') as file:
+        with open(os.path.join(SERVICES, self.service_name), 'r') as file:
             return load(file)["login"], self.__decrypt(self.master)
 
     def remove(self):
-        os.remove(os.path.join(services, self.service_name))
+        os.remove(os.path.join(SERVICES, self.service_name))
+
+    def change_master(self, master):
+        self.master = master
+        login, password = self.get()
+        self.remove()
+        self.save(login, password)
 
     def __encrypt(self, master) -> str:
         salt = get_random_bytes(AES.block_size)
@@ -263,7 +290,7 @@ class Service:
                f"{b64encode(cipher_text).decode('utf-8')}"
 
     def get_hash(self):
-        with open(os.path.join(services, self.service_name), 'r') as file:
+        with open(os.path.join(SERVICES, self.service_name), 'r') as file:
             return load(file)["hash"]
 
     def __parse_hash(self, block_size=24) -> tuple:
@@ -275,7 +302,6 @@ class Service:
     def __decrypt(self, master) -> str:
         """
 
-        :raises ValueError
         :param master:
         :return:
         """
@@ -291,7 +317,7 @@ class Service:
         try:
             return cipher.decrypt_and_verify(cipher_text, tag).decode('utf-8')
         except ValueError:
-            pass
+            return ""
 
 
 class MyError(Exception):
@@ -300,7 +326,7 @@ class MyError(Exception):
 
 def main():
 
-    console = Console(getpass(prompt="[*] Master password: "))
+    console = Console(getpass(prompt="[?] Master password: "))
     if console.master.check():
         console.loop()
     else:
@@ -313,10 +339,10 @@ if __name__ == '__main__':
     try:
         main()
     except EOFError:
-        print('\n[-] PWS stopped', file=sys.stderr)
+        print('\n[X] PWS stopped', file=sys.stderr)
         exit(1)
     except KeyboardInterrupt:
-        print('\n[-] PWS stopped', file=sys.stderr)
+        print('\n[X] PWS stopped', file=sys.stderr)
         exit(130)
     finally:
         os.system(["cls", "clear"][os.name == 'posix'])
