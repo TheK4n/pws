@@ -216,7 +216,7 @@ class Master:
             service = Service(new_master, s)
             service.save(l, p)
 
-    def write(self, password=None):
+    def write(self, password):
         with open(SHADOW, 'wb') as file:
             self.password = password
             self.encoded_password = self.__encode_master_password(password)
