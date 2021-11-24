@@ -32,9 +32,7 @@ Clone repository and installing dependencies:
 ```bash
 git clone https://github.com/TheK4n/pws.git
 cd pws
-python3.10 -m pip install -r requirements.txt
-chmod u+x pws
-ln -s $PWD/pws ~/bin/pws
+make
 ```
 
 
@@ -50,6 +48,8 @@ ln -s $PWD/pws ~/bin/pws
 * ```get "service"``` Shows login and password of service
 * ```rm "service"``` Removes service
 
+
+## RoadMap
 
 
 <h1 align="center"><a href="#top">▲</a></h1>
