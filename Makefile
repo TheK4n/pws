@@ -12,4 +12,4 @@ uninstall:
 	rm $(iPATH)/$(SC)
 
 clean:
-	rm -r .gitignore README.md .git
+	rm -rf .gitignore README.md .git LICENSE

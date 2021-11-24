@@ -20,7 +20,7 @@ title = fr"""
  | |         \  /\  /     ____) |
  |_|          \/  \/     |_____/   by TheK4n
 
-Github  : https://github.com/TheK4n
+Github  : https://github.com/TheK4n/pws
 Version : {__version__}
 
 """
@@ -31,7 +31,7 @@ class MyError(Exception):
 
 
 def main():
-
+    print(title)
     console = Console(getpass(prompt="[?] Master password: "))
     if console.master.check():
         console.loop()

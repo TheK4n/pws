@@ -52,6 +52,6 @@ make
 ## RoadMap
 1. export/import passwords html
 2. copy password to clipboard
-3. compare all services in one json
+3. compare all services and settings in one json
 
 <h1 align="center"><a href="#top">▲</a></h1>
